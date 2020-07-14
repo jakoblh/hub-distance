@@ -1,7 +1,7 @@
 # hub-distance
 
 Simple and lightweight commandline utility to determine the hub-distance of word.\
-The hub-distance of a word `x` is defined over the minimum number of links needed to get from the wikipedia article to the pornhub domain.
+The hub-distance of a word `x` is defined over the minimum number of links required to get from the wikipedia article to the pornhub domain.
 
 ## usage
 
