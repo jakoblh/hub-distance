@@ -6,56 +6,59 @@ from bs4 import BeautifulSoup
 import sys
 import re
 
-hub = ".*pornhub.com.*"
+hub = r".*pornhub\.com.*"
 searched = set()
 
 
-def search(path, rest):
-    url = path[-1]
-    base_url = urlparse(url)
-
-    if re.match(hub, base_url.geturl()):
-        return (path, 0)
-
-    if rest <= 0:
-        return ([],-1)
+def get_links(url):
+    res = set()
     
-    print("requesting: " + url)
-    req = r.get(url)
-    soup = BeautifulSoup(req.content, 'html.parser')
-
-    for link in soup.find_all('a', href=True):
-        new_url = urlparse(link['href'])
+    print("requesting: %s" % url)
+    try:
+        req = r.get(url)
+        soup = BeautifulSoup(req.content, 'html.parser')
         
-        #relative path
-        if new_url.scheme == '' and new_url.path != '':
-            new_url = new_url._replace(netloc=base_url.netloc)
-            new_url = new_url._replace(scheme=base_url.scheme)
+        for link in soup.find_all('a', href=True):
+            new_url = urlparse(link['href'])
+            if not re.match(r".*\.pdf", new_url.geturl()) \
+                    and not re.match(r"^(en).wiki.*", new_url.netloc) \
+                    and new_url.scheme != '':
+
+                res.add(new_url.geturl())
+    except r.exceptions.HTTPError as e:
+        print("HTTPError: %s" % e.response)
+    except r.exceptions.ConnectionError as e:
+        print("ConnectionError: %s" % e.response)
+    except r.exceptions.TooManyRedirects as e:
+        print("TooManyRedirects: %s" % e.response)
 
 
-        if new_url.scheme != '' and new_url.geturl() not in searched:
-            searched.add(new_url.geturl())
-            p, dist = search(path + [new_url.geturl()], rest -1)
-
-            if dist >= 0:
-                return (p, dist +1)
-
-    return ([],-1)
+    return res
 
 
-def print_links(url):
-    req = r.get(url)
-    soup = BeautifulSoup(req.content, 'html.parser')
+def search(url, maxdepth):
+    searched = set()
+    links = get_links(url)
 
-    print(soup.content)
-    for link in soup.find_all('a', href=True):
-        print(link['href'])
+    
+    for i in range(maxdepth):
+        new_links = set()
 
+        for link in links:
+            if re.match(hub, link):
+                return i + 1
+
+        for link in links:
+            new_links.update(get_links(link).difference(searched))
+        
+        searched.update(new_links)
+
+
+       
 
 url = "https://en.wikipedia.org/wiki/%s" % sys.argv[1]
-# url = "https://duckduckgo.com/?q=test"
 
-# print_links(url)
-path, dist = search([url], 8)
-# print(res)
-print("found link with distance: %d\nand path: %s" %(dist, path))
+# print("\n".join(get_links(url)))
+
+dist = search(url, 4)
+print("found link with distance: %d" %dist)
